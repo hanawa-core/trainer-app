@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>トレーニング記録</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ナビゲーション -->
+<div class="topbar">
+  <span id="sync-indicator" class="sync-indicator">⚙ 未設定</span>
+  <button class="btn-settings" onclick="openSettings()">⚙ 設定</button>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('clients')">クライアント</button>
+  <button class="nav-btn" onclick="showPage('session')">記録</button>
+  <button class="nav-btn" onclick="showPage('history')">履歴</button>
+</nav>
+
+<!-- ========== クライアント一覧ページ ========== -->
+<div id="page-clients" class="page active">
+  <div class="page-header">
+    <h1>クライアント一覧</h1>
+    <button class="btn-primary" onclick="openClientModal()">＋ 追加</button>
+  </div>
+  <div id="client-list" class="card-list"></div>
+</div>
+
+<!-- ========== セッション記録ページ ========== -->
+<div id="page-session" class="page">
+  <div class="page-header">
+    <h1>トレーニング記録</h1>
+  </div>
+
+  <div class="form-section">
+    <label>クライアント</label>
+    <select id="session-client" class="input-field" onchange="onClientChange()"></select>
+
+    <!-- 前回カルテ情報 -->
+    <div id="prev-session-info" class="prev-info" style="display:none">
+      <div class="prev-info-text">
+        <span class="prev-info-label">前回</span>
+        <span id="prev-session-date"></span>
+        <span id="prev-session-summary"></span>
+      </div>
+      <div class="prev-info-actions">
+        <button class="btn-link" onclick="viewPrevSession()">📋 確認</button>
+        <button class="btn-link btn-link-primary" onclick="loadPrevSession()">↻ 読込</button>
+      </div>
+    </div>
+
+    <label>日付</label>
+    <input type="date" id="session-date" class="input-field">
+
+    <div class="row-2">
+      <div>
+        <label>体重 (kg)</label>
+        <input type="text" id="session-weight" class="input-field hw-target" placeholder="タップして手書き" data-hw-hint="数字">
+      </div>
+      <div>
+        <label>体脂肪 (%)</label>
+        <input type="text" id="session-fat" class="input-field hw-target" placeholder="タップして手書き" data-hw-hint="数字">
+      </div>
+    </div>
+  </div>
+
+  <!-- 種目リスト -->
+  <div class="form-section">
+    <div class="section-title-row">
+      <span>種目</span>
+      <button class="btn-secondary" onclick="addExercise()">＋ 種目追加</button>
+    </div>
+    <div id="exercise-list"></div>
+  </div>
+
+  <!-- メモ -->
+  <div class="form-section">
+    <label>メモ</label>
+    <textarea id="session-memo" class="input-field memo-field hw-target" placeholder="タップして手書き" data-hw-hint="テキスト"></textarea>
+  </div>
+
+  <div class="form-section">
+    <button class="btn-primary btn-full" onclick="saveSession()">保存</button>
+  </div>
+</div>
+
+<!-- ========== 履歴ページ ========== -->
+<div id="page-history" class="page">
+  <div class="page-header">
+    <h1>履歴</h1>
+  </div>
+  <div class="form-section">
+    <label>クライアント</label>
+    <select id="history-client" class="input-field" onchange="loadHistory()"></select>
+  </div>
+  <div id="history-list" class="card-list"></div>
+</div>
+
+<!-- ========== クライアント追加モーダル ========== -->
+<div id="modal-client" class="modal-overlay" onclick="closeClientModal(event)">
+  <div class="modal-box">
+    <h2 id="modal-client-title">クライアント追加</h2>
+    <label>名前</label>
+    <input type="text" id="client-name" class="input-field hw-target" placeholder="タップして手書き" data-hw-hint="テキスト">
+    <label>目標</label>
+    <input type="text" id="client-goal" class="input-field hw-target" placeholder="タップして手書き" data-hw-hint="テキスト">
+    <label>メモ</label>
+    <input type="text" id="client-note" class="input-field hw-target" placeholder="タップして手書き" data-hw-hint="テキスト">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeClientModal()">キャンセル</button>
+      <button class="btn-primary" onclick="saveClient()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== セッション詳細モーダル ========== -->
+<div id="modal-session-detail" class="modal-overlay" onclick="closeSessionDetail(event)">
+  <div class="modal-box modal-box-wide">
+    <h2 id="detail-title"></h2>
+    <div id="detail-content"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeSessionDetail()">閉じる</button>
+      <button class="btn-primary" onclick="printSession()">PDF出力</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 手書き認識モーダル ========== -->
+<div id="modal-hw" class="modal-overlay">
+  <div class="modal-box modal-box-hw">
+    <div class="hw-header">
+      <h2 id="hw-title">手書き入力</h2>
+      <button class="btn-keyboard" onclick="useKeyboard()">⌨ キーボード</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="hw-canvas" width="700" height="200"></canvas>
+      <button class="btn-clear-canvas" onclick="clearCanvas()">クリア</button>
+    </div>
+    <div id="hw-result" class="hw-result">ここに書いてください</div>
+    <div class="hw-candidates" id="hw-candidates"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeHW()">キャンセル</button>
+      <button class="btn-primary" onclick="confirmHW()">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 設定モーダル ========== -->
+<div id="modal-settings" class="modal-overlay" onclick="closeSettings(event)">
+  <div class="modal-box">
+    <h2>⚙ 設定 - Google Drive 同期</h2>
+    <p class="settings-help">
+      別デバイスとデータを同期するには、Google Cloud で OAuth Client ID を作成して下記に貼り付けます。<br>
+      <a href="#" onclick="document.getElementById('setup-guide').classList.toggle('open');return false;">📖 セットアップ手順を見る</a>
+    </p>
+    <div id="setup-guide" class="setup-guide">
+      <ol>
+        <li><a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> でプロジェクト作成</li>
+        <li>「APIとサービス」→「ライブラリ」→ <b>Google Drive API</b> を有効化</li>
+        <li>「OAuth同意画面」を構成（外部・自分のメールを追加）</li>
+        <li>「認証情報」→ <b>OAuth クライアントID</b> 作成（種類：ウェブアプリ）</li>
+        <li>「承認済みの JavaScript 生成元」にこのアプリのURLを追加<br>
+            <code id="origin-display"></code></li>
+        <li>発行された Client ID（〜.apps.googleusercontent.com）を下にコピペ</li>
+      </ol>
+    </div>
+
+    <label>Google OAuth Client ID</label>
+    <input type="text" id="settings-client-id" class="input-field" placeholder="xxxxx.apps.googleusercontent.com">
+
+    <div class="modal-actions" style="justify-content:flex-start;margin-top:12px">
+      <button class="btn-secondary" onclick="saveSettings()">Client ID を保存</button>
+    </div>
+
+    <div id="settings-sync-status" class="sync-status-box"></div>
+
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-primary" id="btn-login" onclick="loginGDrive()">Googleでログイン</button>
+      <button class="btn-secondary" id="btn-logout" onclick="logoutGDrive()" style="display:none">ログアウト</button>
+      <button class="btn-primary" id="btn-sync-now" onclick="syncNowBtn()" style="display:none">今すぐ同期</button>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      <button class="btn-secondary" onclick="closeSettings()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 印刷用コンテンツ -->
+<div id="print-area" class="print-area"></div>
+
+<script src="handwriting.js"></script>
+<script src="gdrive.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
